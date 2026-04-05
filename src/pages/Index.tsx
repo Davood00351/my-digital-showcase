@@ -4,9 +4,20 @@ import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import profileImg from "@/assets/profile.jpg";
+import euFlag from "@/assets/eu-flag.png";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
-const handleDownloadPDF = () => {
-  window.print();
+const handleDownloadPDF = async () => {
+  const el = document.getElementById("cv-printable");
+  if (!el) return;
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfW = pdf.internal.pageSize.getWidth();
+  const pdfH = (canvas.height * pdfW) / canvas.width;
+  pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+  pdf.save("Davood_Sharifi_CV.pdf");
 };
 
 const Index = () => {
