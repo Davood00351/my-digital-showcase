@@ -239,6 +239,7 @@ const Index = () => {
           </Button>
         </div>
       </div>
+      </div>
 
       <Footer />
     </div>
