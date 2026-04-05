@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
+import { useCV } from "@/contexts/CVContext";
 
 type Tab = "cv" | "products" | "messages" | "settings";
 
@@ -26,7 +27,6 @@ const Admin = () => {
         <h1 className="text-2xl font-heading font-bold text-foreground mb-8">Admin Panel</h1>
 
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar */}
           <div className="md:w-56 flex-shrink-0">
             <div className="bg-card rounded-xl border border-border p-3 space-y-1">
               {tabs.map((tab) => (
@@ -42,7 +42,6 @@ const Admin = () => {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 bg-card rounded-xl border border-border p-6">
             {activeTab === "cv" && <CVPanel />}
             {activeTab === "products" && <ProductsPanel />}
@@ -56,16 +55,25 @@ const Admin = () => {
 };
 
 const CVPanel = () => {
-  const [name, setName] = useState("Davood Sharifi");
-  const [title, setTitle] = useState("Software Developer & Creative Designer");
-  const [about, setAbout] = useState("I'm a 19-year-old passionate software developer and creative designer...");
-  const [phone, setPhone] = useState("+351 927 717 490");
-  const [email, setEmail] = useState("davood00351@gmail.com");
+  const { cv, updateCV } = useCV();
+  const [name, setName] = useState(cv.name);
+  const [title, setTitle] = useState(cv.title);
+  const [about, setAbout] = useState(cv.about);
+  const [phone, setPhone] = useState(cv.phone);
+  const [email, setEmail] = useState(cv.email);
+  const [address, setAddress] = useState(cv.address);
+  const [location, setLocation] = useState(cv.location);
+  const [dob, setDob] = useState(cv.dob);
+
+  const handleSave = () => {
+    updateCV({ name, title, about, phone, email, address, location, dob });
+    toast.success("CV info updated! Changes are now live on the CV page.");
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-heading font-semibold text-foreground">Edit CV Information</h2>
-      <p className="text-sm text-muted-foreground">Changes are local only. Connect Firebase to persist data.</p>
+      <p className="text-sm text-muted-foreground">Changes will be reflected instantly on the CV page.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-foreground mb-1 block">Full Name</label>
@@ -83,12 +91,24 @@ const CVPanel = () => {
           <label className="text-sm font-medium text-foreground mb-1 block">Email</label>
           <Input value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Location</label>
+          <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Address</label>
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-foreground mb-1 block">Date of Birth</label>
+          <Input value={dob} onChange={(e) => setDob(e.target.value)} />
+        </div>
       </div>
       <div>
         <label className="text-sm font-medium text-foreground mb-1 block">About Me</label>
         <Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} />
       </div>
-      <Button className="gap-2" onClick={() => toast.success("CV info saved locally!")}>
+      <Button className="gap-2" onClick={handleSave}>
         <Save size={16} /> Save Changes
       </Button>
     </div>
