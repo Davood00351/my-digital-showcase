@@ -27,9 +27,15 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Hero */}
+      {/* Europass Header */}
+      <div id="cv-printable">
       <section className="hero-gradient pt-24 pb-16 md:pb-24 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Europass Badge */}
+          <div className="flex items-center gap-3 mb-8">
+            <img src={euFlag} alt="European Union Flag" className="w-10 h-10 object-contain" />
+            <span className="text-primary-foreground/90 text-xl font-heading font-bold tracking-wide">Europass</span>
+          </div>
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
             <div className="w-32 h-32 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-primary-foreground/30 shadow-xl flex-shrink-0">
               <img src={profileImg} alt="Davood Sharifi" className="w-full h-full object-cover" />
