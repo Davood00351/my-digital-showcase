@@ -55,8 +55,32 @@ const Index = () => {
               <span className="text-primary-foreground/90 text-xl font-heading font-bold tracking-wide">Europass</span>
             </div>
             <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
-              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-primary-foreground/30 shadow-xl flex-shrink-0">
-                <img src={profileImg} alt={cv.name} className="w-full h-full object-cover" />
+              <div className="relative w-40 h-40 md:w-52 md:h-52 flex-shrink-0 flex items-center justify-center">
+                {/* Rotating EU stars */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '20s' }}>
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const angle = (i * 30) * (Math.PI / 180);
+                    const radius = 48;
+                    const x = 50 + radius * Math.cos(angle);
+                    const y = 50 + radius * Math.sin(angle);
+                    return (
+                      <span
+                        key={i}
+                        className="absolute text-yellow-400 text-[10px] md:text-xs"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        ★
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="w-32 h-32 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-primary-foreground/30 shadow-xl z-10">
+                  <img src={profileImg} alt={cv.name} className="w-full h-full object-cover" />
+                </div>
               </div>
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-heading font-bold text-primary-foreground mb-2">
