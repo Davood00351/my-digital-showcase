@@ -16,12 +16,29 @@ const Index = () => {
   const handleDownloadPDF = async () => {
     const el = document.getElementById("cv-printable");
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+    // Temporarily remove no-print class so header is included
+    const noPrintEls = el.querySelectorAll('.no-print');
+    noPrintEls.forEach(e => e.classList.remove('no-print'));
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    noPrintEls.forEach(e => e.classList.add('no-print'));
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = (canvas.height * pdfW) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+    // Handle multi-page if content is taller than A4
+    const pageH = pdf.internal.pageSize.getHeight();
+    if (pdfH <= pageH) {
+      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+    } else {
+      let position = 0;
+      let remaining = pdfH;
+      while (remaining > 0) {
+        pdf.addImage(imgData, "PNG", 0, position, pdfW, pdfH);
+        remaining -= pageH;
+        position -= pageH;
+        if (remaining > 0) pdf.addPage();
+      }
+    }
     pdf.save("Davood_Sharifi_CV.pdf");
   };
 
@@ -38,8 +55,32 @@ const Index = () => {
               <span className="text-primary-foreground/90 text-xl font-heading font-bold tracking-wide">Europass</span>
             </div>
             <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
-              <div className="w-32 h-32 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-primary-foreground/30 shadow-xl flex-shrink-0">
-                <img src={profileImg} alt={cv.name} className="w-full h-full object-cover" />
+              <div className="relative w-40 h-40 md:w-52 md:h-52 flex-shrink-0 flex items-center justify-center">
+                {/* Rotating EU stars */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '20s' }}>
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const angle = (i * 30) * (Math.PI / 180);
+                    const radius = 48;
+                    const x = 50 + radius * Math.cos(angle);
+                    const y = 50 + radius * Math.sin(angle);
+                    return (
+                      <span
+                        key={i}
+                        className="absolute text-yellow-400 text-[10px] md:text-xs"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        ★
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="w-32 h-32 md:w-44 md:h-44 rounded-full overflow-hidden border-4 border-primary-foreground/30 shadow-xl z-10">
+                  <img src={profileImg} alt={cv.name} className="w-full h-full object-cover" />
+                </div>
               </div>
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-heading font-bold text-primary-foreground mb-2">
