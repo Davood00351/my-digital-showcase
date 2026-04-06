@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export interface CVData {
   name: string;
@@ -9,6 +11,13 @@ export interface CVData {
   address: string;
   dob: string;
   location: string;
+  socialLinks: {
+    github: string;
+    linkedin: string;
+    instagram: string;
+    whatsapp: string;
+    tiktok: string;
+  };
   education: { period: string; degree: string; school: string; details: string[] }[];
   experience: { year: string; title: string; desc: string }[];
   technicalSkills: { name: string; pct: number }[];
@@ -25,6 +34,13 @@ const defaultCV: CVData = {
   address: "Rua do Raio, nº 75, Braga",
   dob: "22/05/2006",
   location: "Braga, Portugal",
+  socialLinks: {
+    github: "",
+    linkedin: "",
+    instagram: "",
+    whatsapp: "",
+    tiktok: "",
+  },
   education: [
     {
       period: "2018 – 2022",
@@ -75,21 +91,51 @@ const defaultCV: CVData = {
   ],
 };
 
+const CV_DOC_PATH = "settings/cv";
+
 interface CVContextType {
   cv: CVData;
   updateCV: (updates: Partial<CVData>) => void;
+  saveToFirestore: () => Promise<void>;
+  loading: boolean;
 }
 
 const CVContext = createContext<CVContextType | undefined>(undefined);
 
 export const CVProvider = ({ children }: { children: ReactNode }) => {
   const [cv, setCV] = useState<CVData>(defaultCV);
+  const [loading, setLoading] = useState(true);
+
+  // Load from Firestore on mount
+  useEffect(() => {
+    const loadCV = async () => {
+      try {
+        const snap = await getDoc(doc(db, CV_DOC_PATH));
+        if (snap.exists()) {
+          setCV({ ...defaultCV, ...snap.data() } as CVData);
+        }
+      } catch (e) {
+        console.log("Using default CV data (Firestore not available yet)");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCV();
+  }, []);
 
   const updateCV = (updates: Partial<CVData>) => {
     setCV((prev) => ({ ...prev, ...updates }));
   };
 
-  return <CVContext.Provider value={{ cv, updateCV }}>{children}</CVContext.Provider>;
+  const saveToFirestore = async () => {
+    await setDoc(doc(db, CV_DOC_PATH), cv);
+  };
+
+  return (
+    <CVContext.Provider value={{ cv, updateCV, saveToFirestore, loading }}>
+      {children}
+    </CVContext.Provider>
+  );
 };
 
 export const useCV = () => {

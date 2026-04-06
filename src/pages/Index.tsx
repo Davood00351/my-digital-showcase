@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Download, Mail, Phone, MapPin, Calendar, Briefcase, GraduationCap, Globe, CheckCircle } from "lucide-react";
+import { Download, Mail, Phone, MapPin, Calendar, Briefcase, GraduationCap, Globe, CheckCircle, Github, Linkedin, Instagram, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,14 +9,27 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useCV } from "@/contexts/CVContext";
 
+const TikTokIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.73a8.19 8.19 0 004.76 1.52v-3.4a4.85 4.85 0 01-1-.16z"/>
+  </svg>
+);
+
 const Index = () => {
   const cvRef = useRef<HTMLDivElement>(null);
   const { cv } = useCV();
 
+  const socialLinks = [
+    { key: "github", icon: Github, url: cv.socialLinks?.github, label: "GitHub" },
+    { key: "linkedin", icon: Linkedin, url: cv.socialLinks?.linkedin, label: "LinkedIn" },
+    { key: "instagram", icon: Instagram, url: cv.socialLinks?.instagram, label: "Instagram" },
+    { key: "whatsapp", icon: MessageCircle, url: cv.socialLinks?.whatsapp, label: "WhatsApp" },
+    { key: "tiktok", icon: TikTokIcon, url: cv.socialLinks?.tiktok, label: "TikTok" },
+  ].filter(l => l.url);
+
   const handleDownloadPDF = async () => {
     const el = document.getElementById("cv-printable");
     if (!el) return;
-    // Temporarily remove no-print class so header is included
     const noPrintEls = el.querySelectorAll('.no-print');
     noPrintEls.forEach(e => e.classList.remove('no-print'));
     const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -25,7 +38,6 @@ const Index = () => {
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = (canvas.height * pdfW) / canvas.width;
-    // Handle multi-page if content is taller than A4
     const pageH = pdf.internal.pageSize.getHeight();
     if (pdfH <= pageH) {
       pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
@@ -56,7 +68,6 @@ const Index = () => {
             </div>
             <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
               <div className="relative w-40 h-40 md:w-52 md:h-52 flex-shrink-0 flex items-center justify-center">
-                {/* Rotating EU stars */}
                 <div className="absolute inset-0 animate-spin" style={{ animationDuration: '20s' }}>
                   {Array.from({ length: 12 }).map((_, i) => {
                     const angle = (i * 30) * (Math.PI / 180);
@@ -64,15 +75,8 @@ const Index = () => {
                     const x = 50 + radius * Math.cos(angle);
                     const y = 50 + radius * Math.sin(angle);
                     return (
-                      <span
-                        key={i}
-                        className="absolute text-yellow-400 text-[10px] md:text-xs"
-                        style={{
-                          left: `${x}%`,
-                          top: `${y}%`,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
+                      <span key={i} className="absolute text-yellow-400 text-[10px] md:text-xs"
+                        style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}>
                         ★
                       </span>
                     );
@@ -86,18 +90,26 @@ const Index = () => {
                 <h1 className="text-3xl md:text-5xl font-heading font-bold text-primary-foreground mb-2">
                   {cv.name}
                 </h1>
-                <p className="text-lg md:text-xl text-primary-foreground/80 mb-4">
-                  {cv.title}
-                </p>
+                <p className="text-lg md:text-xl text-primary-foreground/80 mb-4">{cv.title}</p>
                 <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-primary-foreground/70">
                   <span className="flex items-center gap-1"><MapPin size={14} /> {cv.location}</span>
                   <span className="flex items-center gap-1"><Phone size={14} /> {cv.phone}</span>
                   <span className="flex items-center gap-1"><Mail size={14} /> {cv.email}</span>
                 </div>
-                <Button
-                  onClick={handleDownloadPDF}
-                  className="mt-6 bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-semibold gap-2"
-                >
+                {/* Social Links */}
+                {socialLinks.length > 0 && (
+                  <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
+                    {socialLinks.map((s) => (
+                      <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground/90 text-xs font-medium transition-colors">
+                        {s.key === "tiktok" ? <TikTokIcon /> : <s.icon size={14} />}
+                        {s.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <Button onClick={handleDownloadPDF}
+                  className="mt-6 bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-semibold gap-2">
                   <Download size={16} /> Download CV as PDF
                 </Button>
               </div>
@@ -114,7 +126,6 @@ const Index = () => {
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Education */}
             <section className="europass-section animate-fade-in" style={{ animationDelay: "0.1s" }}>
               <h2 className="europass-heading flex items-center gap-2">
                 <GraduationCap size={20} className="text-primary" /> Education
@@ -128,16 +139,13 @@ const Index = () => {
                     <h3 className="font-semibold text-foreground">{edu.degree}</h3>
                     <p className="text-sm text-primary font-medium">{edu.school}</p>
                     <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                      {edu.details.map((d, j) => (
-                        <li key={j}>• {d}</li>
-                      ))}
+                      {edu.details.map((d, j) => (<li key={j}>• {d}</li>))}
                     </ul>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* Work Experience */}
             <section className="europass-section animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <h2 className="europass-heading flex items-center gap-2">
                 <Briefcase size={20} className="text-primary" /> Work Experience
@@ -171,9 +179,7 @@ const Index = () => {
                         <span className="text-foreground">{s.name}</span>
                         <span className="text-muted-foreground">{s.pct}%</span>
                       </div>
-                      <div className="skill-bar-track">
-                        <div className="skill-bar-fill" style={{ width: `${s.pct}%` }} />
-                      </div>
+                      <div className="skill-bar-track"><div className="skill-bar-fill" style={{ width: `${s.pct}%` }} /></div>
                     </div>
                   ))}
                 </div>
@@ -189,9 +195,7 @@ const Index = () => {
                         <span className="text-foreground">{s.name}</span>
                         <span className="text-muted-foreground">{s.pct}%</span>
                       </div>
-                      <div className="skill-bar-track">
-                        <div className="skill-bar-fill" style={{ width: `${s.pct}%` }} />
-                      </div>
+                      <div className="skill-bar-track"><div className="skill-bar-fill" style={{ width: `${s.pct}%` }} /></div>
                     </div>
                   ))}
                 </div>
@@ -207,9 +211,7 @@ const Index = () => {
                         <span className="text-foreground">{s.name}</span>
                         <span className="text-muted-foreground">{s.level}</span>
                       </div>
-                      <div className="skill-bar-track">
-                        <div className="skill-bar-fill" style={{ width: `${s.pct}%` }} />
-                      </div>
+                      <div className="skill-bar-track"><div className="skill-bar-fill" style={{ width: `${s.pct}%` }} /></div>
                     </div>
                   ))}
                 </div>
@@ -217,7 +219,7 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Contact Info */}
+          {/* Contact */}
           <section className="europass-section animate-fade-in" style={{ animationDelay: "0.4s" }}>
             <h2 className="europass-heading">Contact Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -240,7 +242,6 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Download button */}
           <div className="text-center no-print">
             <Button onClick={handleDownloadPDF} className="gap-2" size="lg">
               <Download size={18} /> Download CV as PDF
