@@ -16,12 +16,29 @@ const Index = () => {
   const handleDownloadPDF = async () => {
     const el = document.getElementById("cv-printable");
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+    // Temporarily remove no-print class so header is included
+    const noPrintEls = el.querySelectorAll('.no-print');
+    noPrintEls.forEach(e => e.classList.remove('no-print'));
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    noPrintEls.forEach(e => e.classList.add('no-print'));
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = (canvas.height * pdfW) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+    // Handle multi-page if content is taller than A4
+    const pageH = pdf.internal.pageSize.getHeight();
+    if (pdfH <= pageH) {
+      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+    } else {
+      let position = 0;
+      let remaining = pdfH;
+      while (remaining > 0) {
+        pdf.addImage(imgData, "PNG", 0, position, pdfW, pdfH);
+        remaining -= pageH;
+        position -= pageH;
+        if (remaining > 0) pdf.addPage();
+      }
+    }
     pdf.save("Davood_Sharifi_CV.pdf");
   };
 
