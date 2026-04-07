@@ -35,10 +35,10 @@ const defaultCV: CVData = {
   dob: "22/05/2006",
   location: "Braga, Portugal",
   socialLinks: {
-    github: "",
-    linkedin: "",
+    github: "https://github.com/davoodepb",
+    linkedin: "https://www.linkedin.com/in/davood-sharifi-a801743b9",
     instagram: "",
-    whatsapp: "",
+    whatsapp: "https://wa.me/351927717490",
     tiktok: "",
   },
   education: [
@@ -106,7 +106,6 @@ export const CVProvider = ({ children }: { children: ReactNode }) => {
   const [cv, setCV] = useState<CVData>(defaultCV);
   const [loading, setLoading] = useState(true);
 
-  // Load from Firestore on mount
   useEffect(() => {
     const loadCV = async () => {
       try {

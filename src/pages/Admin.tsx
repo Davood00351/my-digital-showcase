@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
 import { useCV } from "@/contexts/CVContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useShop, Product } from "@/contexts/ShopContext";
 
 type Tab = "cv" | "social" | "products" | "messages" | "settings";
 
@@ -20,7 +21,7 @@ const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 const Admin = () => {
-  const { user, loading, isAdmin, login, logout } = useAuth();
+  const { user, loading, isAdmin, login, loginWithGoogle, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("cv");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -33,6 +34,18 @@ const Admin = () => {
       toast.success("Logged in successfully!");
     } catch (e: any) {
       toast.error(e.message || "Login failed");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoginLoading(true);
+    try {
+      await loginWithGoogle();
+      toast.success("Logged in with Google!");
+    } catch (e: any) {
+      toast.error(e.message || "Google login failed");
     } finally {
       setLoginLoading(false);
     }
@@ -70,6 +83,17 @@ const Admin = () => {
               <Button className="w-full gap-2" onClick={handleLogin} disabled={loginLoading}>
                 <LogIn size={16} /> {loginLoading ? "Signing in..." : "Sign In"}
               </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">or</span></div>
+              </div>
+              <Button variant="outline" className="w-full gap-2" onClick={handleGoogleLogin} disabled={loginLoading}>
+                <svg className="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Sign in with Google
+              </Button>
+              {user && !isAdmin && (
+                <p className="text-sm text-destructive text-center">You are logged in but not authorized as admin.</p>
+              )}
             </div>
           </div>
         </div>
@@ -131,7 +155,7 @@ const CVPanel = () => {
       await saveToFirestore();
       toast.success("CV saved to database! Changes are live.");
     } catch {
-      toast.success("CV updated locally (Firestore rules may need updating).");
+      toast.success("CV updated locally.");
     }
   };
 
@@ -189,36 +213,132 @@ const SocialPanel = () => {
 };
 
 const ProductsPanel = () => {
-  const [products, setProducts] = useState([
-    { id: 1, title: "Web Dev Course", category: "courses", price: 29.99 },
-    { id: 2, title: "Pixel Adventure", category: "games", price: 9.99 },
-    { id: 3, title: "The Developer's Journey", category: "films", price: 7.99 },
-    { id: 4, title: "Clean Code Handbook", category: "books", price: 15.99 },
-  ]);
+  const { products, categories, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory } = useShop();
+  const [showAdd, setShowAdd] = useState(false);
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newCat, setNewCat] = useState("");
+  const [newImage, setNewImage] = useState("");
+  const [newCatKey, setNewCatKey] = useState("");
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Product>>({});
 
-  const removeProduct = (id: number) => {
-    setProducts(products.filter((p) => p.id !== id));
-    toast.success("Product removed!");
+  const handleAdd = async () => {
+    if (!newTitle || !newPrice) return toast.error("Title and price required");
+    await addProduct({
+      title: newTitle,
+      description: newDesc,
+      price: parseFloat(newPrice),
+      category: newCat || "courses",
+      image: newImage || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop",
+    });
+    setNewTitle(""); setNewDesc(""); setNewPrice(""); setNewCat(""); setNewImage("");
+    setShowAdd(false);
+    toast.success("Product added!");
+  };
+
+  const handleAddCat = async () => {
+    if (!newCatKey || !newCatLabel) return toast.error("Key and label required");
+    await addCategory(newCatKey.toLowerCase().replace(/\s+/g, "-"), newCatLabel);
+    setNewCatKey(""); setNewCatLabel("");
+    setShowAddCat(false);
+    toast.success("Category added!");
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    await updateProduct(id, editData);
+    setEditId(null);
+    setEditData({});
+    toast.success("Product updated!");
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-heading font-semibold text-foreground">Manage Products</h2>
-        <Button size="sm" className="gap-2" onClick={() => toast.info("Product management coming soon")}><Plus size={16} /> Add Product</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowAddCat(!showAddCat)}>
+            <Plus size={16} /> Category
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => setShowAdd(!showAdd)}>
+            <Plus size={16} /> Product
+          </Button>
+        </div>
       </div>
+
+      {/* Categories */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map(c => (
+          <Badge key={c.id} variant="secondary" className="gap-1 text-xs">
+            {c.label}
+            <button onClick={() => { deleteCategory(c.id); toast.success("Category removed"); }} className="ml-1 text-destructive hover:text-destructive/80">×</button>
+          </Badge>
+        ))}
+      </div>
+
+      {/* Add Category Form */}
+      {showAddCat && (
+        <div className="p-4 rounded-lg border border-border bg-background space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="Key (e.g. strategy-trading)" value={newCatKey} onChange={e => setNewCatKey(e.target.value)} />
+            <Input placeholder="Label (e.g. Strategy Trading)" value={newCatLabel} onChange={e => setNewCatLabel(e.target.value)} />
+          </div>
+          <Button size="sm" onClick={handleAddCat}>Add Category</Button>
+        </div>
+      )}
+
+      {/* Add Product Form */}
+      {showAdd && (
+        <div className="p-4 rounded-lg border border-border bg-background space-y-3">
+          <Input placeholder="Title" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+          <Textarea placeholder="Description" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input placeholder="Price" type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} />
+            <select className="border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground" value={newCat} onChange={e => setNewCat(e.target.value)}>
+              <option value="">Select category</option>
+              {categories.map(c => <option key={c.id} value={c.key}>{c.label}</option>)}
+            </select>
+          </div>
+          <Input placeholder="Image URL" value={newImage} onChange={e => setNewImage(e.target.value)} />
+          <Button size="sm" onClick={handleAdd}>Add Product</Button>
+        </div>
+      )}
+
+      {/* Product List */}
       <div className="space-y-3">
         {products.map((p) => (
-          <div key={p.id} className="flex items-center justify-between p-4 rounded-lg border border-border bg-background">
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="capitalize text-xs">{p.category}</Badge>
-              <span className="font-medium text-foreground text-sm">{p.title}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-primary">${p.price}</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil size={14} /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeProduct(p.id)}><Trash2 size={14} /></Button>
-            </div>
+          <div key={p.id} className="p-4 rounded-lg border border-border bg-background">
+            {editId === p.id ? (
+              <div className="space-y-2">
+                <Input value={editData.title ?? p.title} onChange={e => setEditData({ ...editData, title: e.target.value })} />
+                <Input value={editData.description ?? p.description} onChange={e => setEditData({ ...editData, description: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="number" value={editData.price ?? p.price} onChange={e => setEditData({ ...editData, price: parseFloat(e.target.value) })} />
+                  <select className="border border-input rounded-md px-3 py-2 text-sm bg-background text-foreground" value={editData.category ?? p.category} onChange={e => setEditData({ ...editData, category: e.target.value })}>
+                    {categories.map(c => <option key={c.id} value={c.key}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => handleSaveEdit(p.id)}><Save size={14} /> Save</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="capitalize text-xs">{p.category}</Badge>
+                  <span className="font-medium text-foreground text-sm">{p.title}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-primary">${p.price}</span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditId(p.id); setEditData({}); }}><Pencil size={14} /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { deleteProduct(p.id); toast.success("Product removed!"); }}><Trash2 size={14} /></Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -258,6 +378,13 @@ const SettingsPanel = () => (
       <h3 className="font-semibold text-foreground mb-2">🔥 Firebase Connected</h3>
       <p className="text-sm text-muted-foreground">
         Project: cv-davood-54a28 • Auth & Firestore active
+      </p>
+    </div>
+    <div className="bg-accent/50 rounded-lg p-6 border border-border">
+      <h3 className="font-semibold text-foreground mb-2">🔒 Security</h3>
+      <p className="text-sm text-muted-foreground">
+        Admin access is hidden — only accessible via 5 taps on profile photo. 
+        Firestore rules restrict writes to verified admins only.
       </p>
     </div>
   </div>

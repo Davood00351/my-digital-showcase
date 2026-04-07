@@ -1,27 +1,39 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Admin UID - set after first login
-const ADMIN_EMAIL = "davood123@gmail.com";
+const googleProvider = new GoogleAuthProvider();
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        try {
+          const adminDoc = await getDoc(doc(db, "admins", u.uid));
+          setIsAdmin(adminDoc.exists() && adminDoc.data()?.isAdmin === true);
+        } catch {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
     return unsub;
@@ -31,14 +43,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  const loginWithGoogle = async () => {
+    await signInWithPopup(auth, googleProvider);
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
-  const isAdmin = !!user && user.email === ADMIN_EMAIL;
-
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
