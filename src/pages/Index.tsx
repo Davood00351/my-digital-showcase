@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Download, Mail, Phone, MapPin, Calendar, Briefcase, GraduationCap, Globe, CheckCircle, Github, Linkedin, Instagram, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
@@ -18,6 +19,24 @@ const TikTokIcon = () => (
 const Index = () => {
   const cvRef = useRef<HTMLDivElement>(null);
   const { cv } = useCV();
+  const navigate = useNavigate();
+
+  // Secret admin access: tap profile 5 times
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleProfileTap = useCallback(() => {
+    setTapCount(prev => {
+      const next = prev + 1;
+      if (next >= 5) {
+        navigate("/admin-panel-secret");
+        return 0;
+      }
+      return next;
+    });
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => setTapCount(0), 2000);
+  }, [navigate]);
 
   const socialLinks = [
     { key: "github", icon: Github, url: cv.socialLinks?.github, label: "GitHub" },
@@ -30,22 +49,93 @@ const Index = () => {
   const handleDownloadPDF = async () => {
     const el = document.getElementById("cv-printable");
     if (!el) return;
+
+    // Temporarily force light colors for PDF
     const noPrintEls = el.querySelectorAll('.no-print');
     noPrintEls.forEach(e => e.classList.remove('no-print'));
-    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+
+    // Clone element for clean capture
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.position = "absolute";
+    clone.style.left = "-9999px";
+    clone.style.top = "0";
+    clone.style.width = "800px";
+    clone.style.background = "#ffffff";
+    clone.style.color = "#1a1a2e";
+
+    // Force all text to dark colors in clone
+    clone.querySelectorAll("*").forEach((child) => {
+      const el = child as HTMLElement;
+      const computed = window.getComputedStyle(el);
+      const color = computed.color;
+      // If text is too light, darken it
+      if (color) {
+        const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+          const r = parseInt(match[1]);
+          const g = parseInt(match[2]);
+          const b = parseInt(match[3]);
+          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          if (luminance > 0.6) {
+            el.style.color = "#2d2d3f";
+          }
+        }
+      }
+      // Force backgrounds to white/light
+      const bg = computed.backgroundColor;
+      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+        const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (match) {
+          const r = parseInt(match[1]);
+          const g = parseInt(match[2]);
+          const b = parseInt(match[3]);
+          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          if (luminance < 0.3) {
+            el.style.backgroundColor = "#ffffff";
+          }
+        }
+      }
+    });
+
+    // Fix skill bars to be visible
+    clone.querySelectorAll(".skill-bar-track").forEach((track) => {
+      (track as HTMLElement).style.backgroundColor = "#e5e7eb";
+    });
+    clone.querySelectorAll(".skill-bar-fill").forEach((fill) => {
+      (fill as HTMLElement).style.background = "linear-gradient(90deg, #3b82f6, #1d4ed8)";
+    });
+
+    // Fix borders
+    clone.querySelectorAll(".europass-section").forEach((section) => {
+      (section as HTMLElement).style.backgroundColor = "#ffffff";
+      (section as HTMLElement).style.borderColor = "#e5e7eb";
+    });
+
+    document.body.appendChild(clone);
+
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    document.body.removeChild(clone);
     noPrintEls.forEach(e => e.classList.add('no-print'));
-    const imgData = canvas.toDataURL("image/png");
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = (canvas.height * pdfW) / canvas.width;
     const pageH = pdf.internal.pageSize.getHeight();
+
     if (pdfH <= pageH) {
-      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfW, pdfH);
     } else {
       let position = 0;
       let remaining = pdfH;
       while (remaining > 0) {
-        pdf.addImage(imgData, "PNG", 0, position, pdfW, pdfH);
+        pdf.addImage(imgData, "JPEG", 0, position, pdfW, pdfH);
         remaining -= pageH;
         position -= pageH;
         if (remaining > 0) pdf.addPage();
@@ -67,7 +157,10 @@ const Index = () => {
               <span className="text-primary-foreground/90 text-xl font-heading font-bold tracking-wide">Europass</span>
             </div>
             <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
-              <div className="relative w-40 h-40 md:w-52 md:h-52 flex-shrink-0 flex items-center justify-center">
+              <div 
+                className="relative w-40 h-40 md:w-52 md:h-52 flex-shrink-0 flex items-center justify-center cursor-pointer select-none"
+                onClick={handleProfileTap}
+              >
                 <div className="absolute inset-0 animate-spin" style={{ animationDuration: '20s' }}>
                   {Array.from({ length: 12 }).map((_, i) => {
                     const angle = (i * 30) * (Math.PI / 180);

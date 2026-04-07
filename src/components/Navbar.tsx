@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, FileText, ShoppingBag, MessageCircle, Settings } from "lucide-react";
+import { Menu, X, FileText, ShoppingBag, MessageCircle } from "lucide-react";
 
 const navItems = [
   { path: "/", label: "My CV", icon: FileText },
   { path: "/shop", label: "Shop", icon: ShoppingBag },
   { path: "/chat", label: "Chat", icon: MessageCircle },
-  { path: "/admin", label: "Admin", icon: Settings },
 ];
 
 const Navbar = () => {
