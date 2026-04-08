@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FileText, ShoppingBag, MessageCircle, Settings, Plus, Pencil, Trash2, Save, LogIn, LogOut, Link as LinkIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { FileText, ShoppingBag, MessageCircle, Settings, Plus, Pencil, Trash2, Save, LogIn, LogOut, Link as LinkIcon, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -517,26 +517,110 @@ const ProductsPanel = () => {
 };
 
 const MessagesPanel = () => {
-  const messages = [
-    { id: 1, from: "John Doe", text: "Hi, I'm interested in your web dev course.", time: "2 hours ago" },
-    { id: 2, from: "Jane Smith", text: "Can you create a logo for my brand?", time: "5 hours ago" },
-    { id: 3, from: "Alex K.", text: "Great portfolio! Let's collaborate.", time: "1 day ago" },
-  ];
+  const [chats, setChats] = useState<{ id: string; lastMessage: string; lastMessageAt: any; unread: boolean }[]>([]);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ id: string; text: string; sender: string; createdAt: any }[]>([]);
+  const [reply, setReply] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadChats = async () => {
+      const { collection: col, query: q, orderBy: ob, onSnapshot: snap } = await import("firebase/firestore");
+      const { db: fireDb } = await import("@/lib/firebase");
+      const chatsQuery = q(col(fireDb, "chats"), ob("lastMessageAt", "desc"));
+      return snap(chatsQuery, (snapshot) => {
+        setChats(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      });
+    };
+    const unsub = loadChats();
+    return () => { unsub.then(u => u()); };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedChat) return;
+    const loadMessages = async () => {
+      const { collection: col, query: q, orderBy: ob, onSnapshot: snap } = await import("firebase/firestore");
+      const { db: fireDb } = await import("@/lib/firebase");
+      const msgsQuery = q(col(fireDb, "chats", selectedChat, "messages"), ob("createdAt", "asc"));
+      return snap(msgsQuery, (snapshot) => {
+        setChatMessages(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+      });
+    };
+    const unsub = loadMessages();
+    return () => { unsub.then(u => u()); };
+  }, [selectedChat]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  const sendReply = async () => {
+    if (!reply.trim() || !selectedChat) return;
+    const { addDoc, collection: col, serverTimestamp, doc: docRef, updateDoc } = await import("firebase/firestore");
+    const { db: fireDb } = await import("@/lib/firebase");
+    await addDoc(col(fireDb, "chats", selectedChat, "messages"), {
+      text: reply.trim(),
+      sender: "admin",
+      visitorId: selectedChat,
+      createdAt: serverTimestamp(),
+    });
+    await updateDoc(docRef(fireDb, "chats", selectedChat), {
+      lastMessage: reply.trim(),
+      lastMessageAt: serverTimestamp(),
+      unread: false,
+    });
+    setReply("");
+  };
+
+  const formatTime = (ts: any) => {
+    if (!ts?.toDate) return "";
+    return ts.toDate().toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-heading font-semibold text-foreground">Messages</h2>
-      <div className="space-y-3">
-        {messages.map((m) => (
-          <div key={m.id} className="p-4 rounded-lg border border-border bg-background">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-foreground text-sm">{m.from}</span>
-              <span className="text-xs text-muted-foreground">{m.time}</span>
-            </div>
-            <p className="text-sm text-muted-foreground">{m.text}</p>
+    <div className="space-y-4">
+      <h2 className="text-xl font-heading font-semibold text-foreground">Messages (Real-time)</h2>
+
+      {!selectedChat ? (
+        <div className="space-y-2">
+          {chats.length === 0 && <p className="text-sm text-muted-foreground">No messages yet. Visitors can send messages from the Chat page.</p>}
+          {chats.map((chat) => (
+            <button key={chat.id} onClick={() => setSelectedChat(chat.id)}
+              className="w-full p-4 rounded-lg border border-border bg-background hover:bg-accent/50 text-left transition-colors">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-foreground text-sm flex items-center gap-2">
+                  {chat.id.substring(0, 20)}...
+                  {chat.unread && <span className="w-2 h-2 bg-primary rounded-full" />}
+                </span>
+                <span className="text-xs text-muted-foreground">{formatTime(chat.lastMessageAt)}</span>
+              </div>
+              <p className="text-sm text-muted-foreground truncate">{chat.lastMessage}</p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => setSelectedChat(null)}>← Back to conversations</Button>
+          <div className="h-80 overflow-y-auto space-y-3 border border-border rounded-lg p-4 bg-background">
+            {chatMessages.map((msg) => (
+              <div key={msg.id} className={`flex ${msg.sender === "admin" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[70%] px-3 py-2 rounded-lg text-sm ${
+                  msg.sender === "admin" ? "bg-primary text-primary-foreground" : "bg-accent text-foreground"
+                }`}>
+                  <p>{msg.text}</p>
+                  <p className="text-[10px] opacity-70 mt-1">{formatTime(msg.createdAt)}</p>
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
           </div>
-        ))}
-      </div>
+          <div className="flex gap-2">
+            <Input value={reply} onChange={e => setReply(e.target.value)} placeholder="Type your reply..."
+              onKeyDown={e => e.key === "Enter" && sendReply()} className="flex-1" />
+            <Button size="icon" onClick={sendReply} disabled={!reply.trim()}><Send size={16} /></Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

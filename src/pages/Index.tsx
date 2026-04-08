@@ -6,7 +6,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import profileImg from "@/assets/profile.jpg";
 import euFlag from "@/assets/eu-flag.png";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useCV } from "@/contexts/CVContext";
 
@@ -46,101 +45,176 @@ const Index = () => {
     { key: "tiktok", icon: TikTokIcon, url: cv.socialLinks?.tiktok, label: "TikTok" },
   ].filter(l => l.url);
 
-  const handleDownloadPDF = async () => {
-    const el = document.getElementById("cv-printable");
-    if (!el) return;
-
-    // Temporarily force light colors for PDF
-    const noPrintEls = el.querySelectorAll('.no-print');
-    noPrintEls.forEach(e => e.classList.remove('no-print'));
-
-    // Clone element for clean capture
-    const clone = el.cloneNode(true) as HTMLElement;
-    clone.style.position = "absolute";
-    clone.style.left = "-9999px";
-    clone.style.top = "0";
-    clone.style.width = "800px";
-    clone.style.background = "#ffffff";
-    clone.style.color = "#1a1a2e";
-
-    // Force all text to dark colors in clone
-    clone.querySelectorAll("*").forEach((child) => {
-      const el = child as HTMLElement;
-      const computed = window.getComputedStyle(el);
-      const color = computed.color;
-      // If text is too light, darken it
-      if (color) {
-        const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          const r = parseInt(match[1]);
-          const g = parseInt(match[2]);
-          const b = parseInt(match[3]);
-          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          if (luminance > 0.6) {
-            el.style.color = "#2d2d3f";
-          }
-        }
-      }
-      // Force backgrounds to white/light
-      const bg = computed.backgroundColor;
-      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-        const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          const r = parseInt(match[1]);
-          const g = parseInt(match[2]);
-          const b = parseInt(match[3]);
-          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          if (luminance < 0.3) {
-            el.style.backgroundColor = "#ffffff";
-          }
-        }
-      }
-    });
-
-    // Fix skill bars to be visible
-    clone.querySelectorAll(".skill-bar-track").forEach((track) => {
-      (track as HTMLElement).style.backgroundColor = "#e5e7eb";
-    });
-    clone.querySelectorAll(".skill-bar-fill").forEach((fill) => {
-      (fill as HTMLElement).style.background = "linear-gradient(90deg, #3b82f6, #1d4ed8)";
-    });
-
-    // Fix borders
-    clone.querySelectorAll(".europass-section").forEach((section) => {
-      (section as HTMLElement).style.backgroundColor = "#ffffff";
-      (section as HTMLElement).style.borderColor = "#e5e7eb";
-    });
-
-    document.body.appendChild(clone);
-
-    const canvas = await html2canvas(clone, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
-
-    document.body.removeChild(clone);
-    noPrintEls.forEach(e => e.classList.add('no-print'));
-
-    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  const handleDownloadPDF = () => {
     const pdf = new jsPDF("p", "mm", "a4");
-    const pdfW = pdf.internal.pageSize.getWidth();
-    const pdfH = (canvas.height * pdfW) / canvas.width;
+    const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentW = pageW - margin * 2;
+    let y = margin;
 
-    if (pdfH <= pageH) {
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfW, pdfH);
-    } else {
-      let position = 0;
-      let remaining = pdfH;
-      while (remaining > 0) {
-        pdf.addImage(imgData, "JPEG", 0, position, pdfW, pdfH);
-        remaining -= pageH;
-        position -= pageH;
-        if (remaining > 0) pdf.addPage();
+    const checkPage = (needed: number) => {
+      if (y + needed > pageH - margin) {
+        pdf.addPage();
+        y = margin;
       }
+    };
+
+    // --- HEADER with blue background ---
+    pdf.setFillColor(37, 99, 235); // primary blue
+    pdf.rect(0, 0, pageW, 52, "F");
+
+    // EU flag text + Europass
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text("★ Europass", margin, 10);
+
+    // Name
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(cv.name, margin, 25);
+
+    // Title
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(220, 230, 255);
+    pdf.text(cv.title, margin, 33);
+
+    // Contact line
+    pdf.setFontSize(8);
+    pdf.setTextColor(200, 215, 255);
+    const contactLine = `${cv.location}  |  ${cv.phone}  |  ${cv.email}`;
+    pdf.text(contactLine, margin, 41);
+
+    // Social links line
+    const socials: string[] = [];
+    if (cv.socialLinks?.github) socials.push(`GitHub: ${cv.socialLinks.github}`);
+    if (cv.socialLinks?.linkedin) socials.push(`LinkedIn: ${cv.socialLinks.linkedin}`);
+    if (cv.socialLinks?.whatsapp) socials.push(`WhatsApp: ${cv.socialLinks.whatsapp}`);
+    if (socials.length > 0) {
+      pdf.setFontSize(7);
+      pdf.text(socials.join("  |  "), margin, 48);
     }
+
+    y = 60;
+
+    // Helper: section title
+    const sectionTitle = (title: string) => {
+      checkPage(12);
+      pdf.setFontSize(13);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(37, 99, 235);
+      pdf.text(title, margin, y);
+      y += 2;
+      pdf.setDrawColor(37, 99, 235);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 6;
+    };
+
+    // Helper: wrapped text
+    const addText = (text: string, fontSize: number, color: [number, number, number], bold = false, indent = 0) => {
+      pdf.setFontSize(fontSize);
+      pdf.setFont("helvetica", bold ? "bold" : "normal");
+      pdf.setTextColor(...color);
+      const lines = pdf.splitTextToSize(text, contentW - indent);
+      checkPage(lines.length * (fontSize * 0.4 + 1));
+      pdf.text(lines, margin + indent, y);
+      y += lines.length * (fontSize * 0.4 + 1);
+    };
+
+    // --- ABOUT ME ---
+    sectionTitle("About Me");
+    addText(cv.about, 9, [60, 60, 80]);
+    y += 4;
+
+    // --- EDUCATION ---
+    sectionTitle("Education");
+    cv.education.forEach((edu) => {
+      checkPage(20);
+      addText(edu.period, 8, [120, 120, 140]);
+      addText(edu.degree, 10, [30, 30, 50], true);
+      addText(edu.school, 9, [37, 99, 235]);
+      edu.details.forEach((d) => {
+        addText(`• ${d}`, 8, [80, 80, 100], false, 4);
+      });
+      y += 3;
+    });
+
+    // --- EXPERIENCE ---
+    sectionTitle("Work Experience");
+    cv.experience.forEach((exp) => {
+      checkPage(15);
+      addText(exp.year, 8, [120, 120, 140]);
+      addText(exp.title, 10, [30, 30, 50], true);
+      addText(exp.desc, 8, [80, 80, 100], false, 4);
+      y += 3;
+    });
+
+    // --- SKILLS ---
+    sectionTitle("Skills");
+
+    const drawSkillBars = (title: string, skills: { name: string; pct: number }[], startX: number, barW: number) => {
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(30, 30, 50);
+      const savedY = y;
+      pdf.text(title, startX, y);
+      let localY = y + 5;
+
+      skills.forEach((s) => {
+        if (localY > pageH - margin - 10) return; // skip if no space
+        pdf.setFontSize(7.5);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(60, 60, 80);
+        pdf.text(s.name, startX, localY);
+        pdf.text(`${s.pct}%`, startX + barW - 2, localY, { align: "right" });
+        localY += 3;
+        // Track
+        pdf.setFillColor(230, 230, 240);
+        pdf.roundedRect(startX, localY, barW, 2.5, 1, 1, "F");
+        // Fill
+        pdf.setFillColor(37, 99, 235);
+        pdf.roundedRect(startX, localY, barW * (s.pct / 100), 2.5, 1, 1, "F");
+        localY += 6;
+      });
+      return localY;
+    };
+
+    const colW = (contentW - 8) / 3;
+    checkPage(50);
+    const y1 = drawSkillBars("Technical", cv.technicalSkills, margin, colW);
+    const y2 = drawSkillBars("Creative", cv.creativeSkills, margin + colW + 4, colW);
+    const y3 = drawSkillBars("Languages", cv.languages.map(l => ({ name: `${l.name} (${l.level})`, pct: l.pct })), margin + (colW + 4) * 2, colW);
+    y = Math.max(y1 || y, y2 || y, y3 || y) + 4;
+
+    // --- CONTACT INFO ---
+    sectionTitle("Contact Information");
+    checkPage(20);
+    const contacts = [
+      { label: "Phone", value: cv.phone },
+      { label: "Email", value: cv.email },
+      { label: "Address", value: cv.address },
+      { label: "Date of Birth", value: cv.dob },
+      { label: "Location", value: cv.location },
+    ];
+    contacts.forEach((c) => {
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(30, 30, 50);
+      pdf.text(`${c.label}:`, margin, y);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(60, 60, 80);
+      pdf.text(c.value, margin + 30, y);
+      y += 5;
+    });
+
+    // Footer
+    pdf.setFontSize(7);
+    pdf.setTextColor(160, 160, 180);
+    pdf.text(`Generated on ${new Date().toLocaleDateString("en-GB")} — Europass CV`, margin, pageH - 8);
+
     pdf.save("Davood_Sharifi_CV.pdf");
   };
 
