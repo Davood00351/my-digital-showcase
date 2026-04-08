@@ -123,7 +123,14 @@ export const CVProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const updateCV = (updates: Partial<CVData>) => {
-    setCV((prev) => ({ ...prev, ...updates }));
+    setCV((prev) => {
+      const updated = { ...prev, ...updates };
+      // Auto-save to Firestore
+      setDoc(doc(db, CV_DOC_PATH), updated).catch(() => {
+        console.log("Auto-save to Firestore failed, data saved locally");
+      });
+      return updated;
+    });
   };
 
   const saveToFirestore = async () => {
