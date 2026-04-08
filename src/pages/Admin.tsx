@@ -148,32 +148,202 @@ const CVPanel = () => {
   const [address, setAddress] = useState(cv.address);
   const [location, setLocation] = useState(cv.location);
   const [dob, setDob] = useState(cv.dob);
+  const [education, setEducation] = useState(cv.education);
+  const [experience, setExperience] = useState(cv.experience);
+  const [technicalSkills, setTechnicalSkills] = useState(cv.technicalSkills);
+  const [creativeSkills, setCreativeSkills] = useState(cv.creativeSkills);
+  const [languages, setLanguages] = useState(cv.languages);
 
   const handleSave = async () => {
-    updateCV({ name, title, about, phone, email, address, location, dob });
+    updateCV({ name, title, about, phone, email, address, location, dob, education, experience, technicalSkills, creativeSkills, languages });
     try {
       await saveToFirestore();
-      toast.success("CV saved to database! Changes are live.");
+      toast.success("CV saved to Firebase! Changes are live.");
     } catch {
       toast.success("CV updated locally.");
     }
   };
 
+  // Education helpers
+  const updateEdu = (i: number, field: string, val: string) => {
+    const copy = [...education];
+    (copy[i] as any)[field] = val;
+    setEducation(copy);
+  };
+  const updateEduDetail = (i: number, di: number, val: string) => {
+    const copy = [...education];
+    copy[i].details[di] = val;
+    setEducation(copy);
+  };
+  const addEduDetail = (i: number) => {
+    const copy = [...education];
+    copy[i].details.push("");
+    setEducation(copy);
+  };
+  const removeEduDetail = (i: number, di: number) => {
+    const copy = [...education];
+    copy[i].details.splice(di, 1);
+    setEducation(copy);
+  };
+  const addEducation = () => setEducation([...education, { period: "", degree: "", school: "", details: [] }]);
+  const removeEducation = (i: number) => setEducation(education.filter((_, idx) => idx !== i));
+
+  // Experience helpers
+  const updateExp = (i: number, field: string, val: string) => {
+    const copy = [...experience];
+    (copy[i] as any)[field] = val;
+    setExperience(copy);
+  };
+  const addExperience = () => setExperience([...experience, { year: "", title: "", desc: "" }]);
+  const removeExperience = (i: number) => setExperience(experience.filter((_, idx) => idx !== i));
+
+  // Skills helpers
+  const updateSkill = (arr: { name: string; pct: number }[], setter: Function, i: number, field: string, val: string | number) => {
+    const copy = [...arr];
+    (copy[i] as any)[field] = val;
+    setter(copy);
+  };
+  const addSkill = (arr: { name: string; pct: number }[], setter: Function) => setter([...arr, { name: "", pct: 50 }]);
+  const removeSkill = (arr: { name: string; pct: number }[], setter: Function, i: number) => setter(arr.filter((_, idx) => idx !== i));
+
+  // Language helpers
+  const updateLang = (i: number, field: string, val: string | number) => {
+    const copy = [...languages];
+    (copy[i] as any)[field] = val;
+    setLanguages(copy);
+  };
+  const addLanguage = () => setLanguages([...languages, { name: "", pct: 50, level: "" }]);
+  const removeLanguage = (i: number) => setLanguages(languages.filter((_, idx) => idx !== i));
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-heading font-semibold text-foreground">Edit CV Information</h2>
-      <p className="text-sm text-muted-foreground">Changes save to Firebase and appear instantly on the CV page.</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Full Name</label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Title</label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Phone</label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Email</label><Input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Location</label><Input value={location} onChange={(e) => setLocation(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Address</label><Input value={address} onChange={(e) => setAddress(e.target.value)} /></div>
-        <div><label className="text-sm font-medium text-foreground mb-1 block">Date of Birth</label><Input value={dob} onChange={(e) => setDob(e.target.value)} /></div>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-heading font-semibold text-foreground">Edit CV Information</h2>
+        <Button className="gap-2" onClick={handleSave}><Save size={16} /> Save All</Button>
       </div>
-      <div><label className="text-sm font-medium text-foreground mb-1 block">About Me</label><Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} /></div>
-      <Button className="gap-2" onClick={handleSave}><Save size={16} /> Save Changes</Button>
+      <p className="text-sm text-muted-foreground">Changes save to Firebase and appear instantly on the CV page.</p>
+
+      {/* Basic Info */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-foreground border-b border-border pb-2">Personal Info</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Full Name</label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Title</label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Phone</label><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Email</label><Input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Location</label><Input value={location} onChange={(e) => setLocation(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Address</label><Input value={address} onChange={(e) => setAddress(e.target.value)} /></div>
+          <div><label className="text-sm font-medium text-foreground mb-1 block">Date of Birth</label><Input value={dob} onChange={(e) => setDob(e.target.value)} /></div>
+        </div>
+        <div><label className="text-sm font-medium text-foreground mb-1 block">About Me</label><Textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} /></div>
+      </div>
+
+      {/* Education */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h3 className="text-lg font-semibold text-foreground">Education</h3>
+          <Button size="sm" variant="outline" className="gap-1" onClick={addEducation}><Plus size={14} /> Add</Button>
+        </div>
+        {education.map((edu, i) => (
+          <div key={i} className="p-4 rounded-lg border border-border bg-background space-y-3">
+            <div className="flex justify-between items-start">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+                <Input placeholder="Period (e.g. 2018-2022)" value={edu.period} onChange={e => updateEdu(i, "period", e.target.value)} />
+                <Input placeholder="Degree" value={edu.degree} onChange={e => updateEdu(i, "degree", e.target.value)} />
+                <Input placeholder="School" value={edu.school} onChange={e => updateEdu(i, "school", e.target.value)} />
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive ml-2" onClick={() => removeEducation(i)}><Trash2 size={14} /></Button>
+            </div>
+            <div className="space-y-2 pl-4">
+              <label className="text-xs font-medium text-muted-foreground">Details</label>
+              {edu.details.map((d, di) => (
+                <div key={di} className="flex gap-2">
+                  <Input value={d} onChange={e => updateEduDetail(i, di, e.target.value)} className="text-sm" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeEduDetail(i, di)}><Trash2 size={12} /></Button>
+                </div>
+              ))}
+              <Button size="sm" variant="ghost" className="text-xs gap-1" onClick={() => addEduDetail(i)}><Plus size={12} /> Add detail</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Experience */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h3 className="text-lg font-semibold text-foreground">Experience</h3>
+          <Button size="sm" variant="outline" className="gap-1" onClick={addExperience}><Plus size={14} /> Add</Button>
+        </div>
+        {experience.map((exp, i) => (
+          <div key={i} className="p-4 rounded-lg border border-border bg-background">
+            <div className="flex gap-3 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+                <Input placeholder="Year" value={exp.year} onChange={e => updateExp(i, "year", e.target.value)} />
+                <Input placeholder="Title" value={exp.title} onChange={e => updateExp(i, "title", e.target.value)} />
+                <Input placeholder="Description" value={exp.desc} onChange={e => updateExp(i, "desc", e.target.value)} />
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeExperience(i)}><Trash2 size={14} /></Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Technical Skills */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h3 className="text-lg font-semibold text-foreground">Technical Skills</h3>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => addSkill(technicalSkills, setTechnicalSkills)}><Plus size={14} /> Add</Button>
+        </div>
+        {technicalSkills.map((s, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Input className="flex-1" placeholder="Skill name" value={s.name} onChange={e => updateSkill(technicalSkills, setTechnicalSkills, i, "name", e.target.value)} />
+            <div className="flex items-center gap-2 w-40">
+              <input type="range" min={0} max={100} value={s.pct} onChange={e => updateSkill(technicalSkills, setTechnicalSkills, i, "pct", parseInt(e.target.value))} className="flex-1" />
+              <span className="text-xs text-muted-foreground w-8">{s.pct}%</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeSkill(technicalSkills, setTechnicalSkills, i)}><Trash2 size={14} /></Button>
+          </div>
+        ))}
+      </div>
+
+      {/* Creative Skills */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h3 className="text-lg font-semibold text-foreground">Creative Skills</h3>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => addSkill(creativeSkills, setCreativeSkills)}><Plus size={14} /> Add</Button>
+        </div>
+        {creativeSkills.map((s, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Input className="flex-1" placeholder="Skill name" value={s.name} onChange={e => updateSkill(creativeSkills, setCreativeSkills, i, "name", e.target.value)} />
+            <div className="flex items-center gap-2 w-40">
+              <input type="range" min={0} max={100} value={s.pct} onChange={e => updateSkill(creativeSkills, setCreativeSkills, i, "pct", parseInt(e.target.value))} className="flex-1" />
+              <span className="text-xs text-muted-foreground w-8">{s.pct}%</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeSkill(creativeSkills, setCreativeSkills, i)}><Trash2 size={14} /></Button>
+          </div>
+        ))}
+      </div>
+
+      {/* Languages */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h3 className="text-lg font-semibold text-foreground">Languages</h3>
+          <Button size="sm" variant="outline" className="gap-1" onClick={addLanguage}><Plus size={14} /> Add</Button>
+        </div>
+        {languages.map((l, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Input className="flex-1" placeholder="Language" value={l.name} onChange={e => updateLang(i, "name", e.target.value)} />
+            <Input className="w-28" placeholder="Level" value={l.level} onChange={e => updateLang(i, "level", e.target.value)} />
+            <div className="flex items-center gap-2 w-40">
+              <input type="range" min={0} max={100} value={l.pct} onChange={e => updateLang(i, "pct", parseInt(e.target.value))} className="flex-1" />
+              <span className="text-xs text-muted-foreground w-8">{l.pct}%</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeLanguage(i)}><Trash2 size={14} /></Button>
+          </div>
+        ))}
+      </div>
+
+      <Button className="gap-2 w-full" size="lg" onClick={handleSave}><Save size={16} /> Save All Changes to Firebase</Button>
     </div>
   );
 };
